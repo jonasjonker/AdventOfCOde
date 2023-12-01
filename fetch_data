@@ -1,0 +1,14 @@
+#!/bin/bash
+
+usage () {
+    echo "usage: $(basename $0) <year> <day>"
+}
+
+[[ $# -ne 2 ]] && usage && exit 1
+YEAR=${1}
+DAY=${2}
+
+
+source .env
+mkdir -p data/${YEAR}/${DAY}
+curl --cookie $AOC_SESSION_COOKIE https://adventofcode.com/${YEAR}/day/${DAY}/input > data/${YEAR}/${DAY}/input.txt
