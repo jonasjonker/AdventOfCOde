@@ -35,11 +35,7 @@ impl Round {
 
     /// Checks if all attribues of `self` are lower or equal to the attributes of `other`
     fn issubset(self, other: Self) -> bool {
-        if self.r <= other.r && self.g <= other.g && self.b <= other.b {
-            true
-        } else {
-            false
-        }
+        self.r <= other.r && self.g <= other.g && self.b <= other.b
     }
 }
 
@@ -49,70 +45,60 @@ struct Game {
     rounds: Vec<Round>
 }
 
-fn parse_games(file: &String) -> Result<Vec<Game>, Box<dyn Error>> { 
-    Ok(file.lines()
-        // split Game and Rounds
-        .map(|s| s.split(&[';', ':']).collect::<Vec<_>>())
-        // Parse Game & its Rounds
-        .map(|v| Game {
-            id: v[0].split(' ').collect::<Vec<_>>()[1].parse().unwrap(),
-            rounds: 
-                v[1..].iter()
-                // use regex to capture color counts
-                .map(|h| {
-                    let re = Regex::new(r"([0-9]+) (red|green|blue)").unwrap();
-                    re.captures_iter(h)
+fn parse_games(file_content: &String) -> Result<Vec<Game>, Box<dyn Error>> { 
+    let re = Regex::new(r"([0-9]+) (red|green|blue)").unwrap();
+    let games = file_content
+        .lines()
+        .map(|line| {
+            let mut game = Game::default();
+            let mut rounds = vec![];
+
+            for (i, token) in line.split(&[';', ':']).enumerate() {
+                if i == 0 {
+                    game.id = token.split(' ').collect::<Vec<_>>()[1].parse().unwrap();
+                } else {
+                    let round = re
+                        .captures_iter(token)
                         .map(|caps| {
                             let (_, [count, color]) = caps.extract();
                             (color, count.parse::<usize>().unwrap_or_default())
                         })
-                        .collect::<Vec<(&str,usize)>>()
-                })
-                // map color counts to a Round struct
-                .map(|v| 
-                    v.iter().fold(Round::default(), |acc, (color, count)| match (*color, *count) {
-                        ("red",   n) => acc + Round { r:n, g:0, b:0 },
-                        ("green", n) => acc + Round { r:0, g:n, b:0 },
-                        ("blue",  n) => acc + Round { r:0, g:0, b:n },
-                        _ => acc
-                    })
-                )
-                .collect()
+                        .fold(Round::default(), |acc, (color, count)| match color {
+                            "red"   => acc + Round { r: count, g: 0, b: 0 },
+                            "green" => acc + Round { r: 0, g: count, b: 0 },
+                            "blue"  => acc + Round { r: 0, g: 0, b: count },
+                            _ => acc,
+                        });
+                    rounds.push(round);
+                }
             }
-        )
-        // find max values for r, g, b values
-        .map(|g| Game {
-            id: g.id,
-            rounds: vec![
-                g.rounds.iter().fold(Round::default(), |acc, x| x.max_attrs(acc))
-            ]
-        }).collect::<Vec<_>>()
-    )
-}
 
-fn part_one(games: &Vec<Game>) -> Result<(), Box<dyn Error>> { 
-        // Filter records and sum id's
-    let ans = games.iter()
-        .filter(|g| {
-            let check = Round { r: 12, g: 13, b: 14 };
-            g.rounds[0].issubset(check)
+            let max_attrs_round = rounds
+                .iter()
+                .fold(Round::default(), |acc, x| x.max_attrs(acc));
+            game.rounds.push(max_attrs_round);
+            game
         })
-        .fold(0, |acc, g| acc + g.id);
-    println!("{ans}");
-    Ok(())
+        .collect();
+    Ok(games)
+}
+
+fn part_one(games: &Vec<Game>) -> usize { 
+    let max_attrs = Round { r: 12, g: 13, b: 14 };
+    games
+        .iter()
+        .filter(|g| { g.rounds[0].issubset(max_attrs) })
+        .fold(0, |acc, g| acc + g.id)
 }
 
 
-fn part_two(games: &Vec<Game>) -> Result<(), Box<dyn Error>> { 
-        // Filter records and sum id's
-    let ans = games.iter()
+fn part_two(games: &Vec<Game>) -> usize { 
+    games
+        .iter()
         .fold(0, |acc, g| {
             let r = g.rounds[0];
             acc + (r.r * r.g * r.b)
-        });
-    
-    println!("{ans}");
-    Ok(())
+        })
 }
 
 
@@ -121,8 +107,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = fs::read_to_string(path).unwrap();
 
     let games = parse_games(&file)?;
-    let _ = part_one(&games);
-    let _ = part_two(&games);
+    let answer_part_one = part_one(&games);
+    let answer_part_two = part_two(&games);
+
+    println!("{answer_part_one}");
+    println!("{answer_part_two}");
 
     Ok(())
 }
