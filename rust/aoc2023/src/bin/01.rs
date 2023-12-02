@@ -1,28 +1,25 @@
 use std::fs;
 use std::error::Error;
 
-fn part_one(file: &String) -> Result<(), Box<dyn Error>> { 
-    let ans = file.lines()
+fn part_one(file_content: &String) -> Result<u32, Box<dyn Error>> { 
+    let sum = file_content
+        .lines()
         // drop chars in string that don't convert to digits.
-        .map(|line| line.chars())
-        .map(|chars|
-            chars
-                .map(|char| char.to_digit(10))
-                .flatten() // drops None's and unpacks Some's
+        .map(|line| 
+            line.chars()
+                .filter_map(|char| char.to_digit(10))
                 .collect::<Vec<u32>>()
         )
         // concat first and last digit and interpret as number
-        .map(|v| match (v.first(), v.last()) {
-            (Some(a), Some(b)) => match format!("{a}{b}").parse::<u32>() {
-                Ok(n) => Some(n),
-                _ => None
-            },
-            _ => None
+        .filter_map(|digits| {
+            if let (Some(first), Some(last)) = (digits.first(), digits.last()) {
+                format!("{first}{last}").parse::<u32>().ok()
+            } else {
+                None
+            }
         })
-        .flatten()
         .sum::<u32>();
-    println!("{ans}");
-    Ok(())
+    Ok(sum)
 }
 
 fn part_two(file: &String) -> String {
@@ -41,8 +38,7 @@ fn part_two(file: &String) -> String {
         ("nine", "n9e"),
     ];
 
-
-    for (key, val) in trans.iter() {
+    for (key, val) in &trans {
         processed_file = processed_file.replace(key, val);
     }
     processed_file
@@ -50,12 +46,14 @@ fn part_two(file: &String) -> String {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let path = "../../data/2023/1/input.txt";
-    let file = fs::read_to_string(path)?;
+    let file_content = fs::read_to_string(path)?;
 
-    let _ = part_one(&file);
+    let answer_part_one = part_one(&file_content)?;
+    let processed_file_content = part_two(&file_content);
+    let answer_part_two = part_one(&processed_file_content)?;
 
-    let processed_file = part_two(&file);
-    let _ = part_one(&processed_file);
+    println!("{answer_part_one}");
+    println!("{answer_part_two}");
 
     Ok(())
 }
